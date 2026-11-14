@@ -1,6 +1,6 @@
 // Service Worker: speichert alle Dateien auf dem Handy, damit die App offline läuft.
 // Wenn du words.js änderst: VERSION hochzählen (v2, v3, ...), damit das Handy die neue Liste lädt.
-const VERSION = "v6";
+const VERSION = "v7";
 const FILES = [
   "./",
   "index.html",
@@ -8,8 +8,6 @@ const FILES = [
   "manifest.webmanifest",
   "icon-192.png",
   "icon-512.png",
-  "fonts/caveat-latin.woff2",
-  "fonts/caveat-latin-ext.woff2",
 ];
 
 self.addEventListener("install", (e) => {
