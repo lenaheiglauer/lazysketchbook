@@ -2,7 +2,7 @@
 // Strategie: MIT Internet immer die neueste Version laden (und speichern),
 //            OHNE Internet die gespeicherte Version nutzen.
 // Nach Änderungen VERSION hochzählen (und in index.html APP_VERSION gleich setzen).
-const VERSION = "v8";
+const VERSION = "v9";
 const FILES = [
   "./",
   "index.html",
