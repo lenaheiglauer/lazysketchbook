@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#FFF2BA">
+  <title>Lazy Sketchbook</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon-192.png">
+  <style>
+    @font-face {
+      font-family: "Caveat";
+      font-weight: 400 700;
+      font-display: swap;
+      src: url(fonts/caveat-latin.woff2) format("woff2");
+      unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    }
+    @font-face {
+      font-family: "Caveat";
+      font-weight: 400 700;
+      font-display: swap;
+      src: url(fonts/caveat-latin-ext.woff2) format("woff2");
+      unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+    }
+
+    :root {
+      --paper: #FFF2BA;   /* Buttermilk */
+      --ink: #0F3C65;     /* Midnight Blue */
+      --ink-soft: rgba(15, 60, 101, .55);
+      --ink-faint: rgba(15, 60, 101, .12);
+      --sketchy: 255px 18px 225px 18px / 18px 225px 18px 255px;
+      color-scheme: light;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: "Caveat", "Segoe Print", "Comic Sans MS", cursive;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    .app {
+      position: relative;
+      max-width: 460px;
+      margin: 0 auto;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      padding-top: env(safe-area-inset-top);
+    }
+
+    /* ---------- Doodles ---------- */
+    .doodle {
+      fill: none;
+      stroke: var(--ink);
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      overflow: visible;
+    }
+    .doodle .dot { fill: var(--ink); stroke: none; }
+    .draw [pathLength] {
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      animation: draw 1.1s ease-out forwards;
+      animation-delay: var(--d, 0s);
+    }
+    @keyframes draw { to { stroke-dashoffset: 0; } }
+
+    .bg-doodles { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+    .bg-doodles .doodle {
+      position: absolute;
+      opacity: .28;
+      animation: bob 4.5s ease-in-out infinite;
+      animation-delay: var(--bd, 0s);
+    }
+    @keyframes bob {
+      0%, 100% { transform: rotate(var(--r, 0deg)) translateY(0); }
+      50%      { transform: rotate(calc(var(--r, 0deg) + 6deg)) translateY(-6px); }
+    }
+
+    /* ---------- Header ---------- */
+    header {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 22px 26px 0;
+    }
+    .brand { font-size: 1.55rem; line-height: .95; font-weight: 500; }
+    .mascot {
+      width: 44px; height: 52px;
+      border: 0; padding: 0; background: none; cursor: pointer;
+      transform-origin: 50% 100%;
+      animation: sway 3.2s ease-in-out infinite;
+    }
+    .mascot svg { width: 100%; height: 100%; }
+    .mascot.spin { animation: spin .8s cubic-bezier(.3, 1.6, .5, 1); }
+    @keyframes sway { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+    @keyframes spin {
+      0%   { transform: rotate(0) scale(1); }
+      40%  { transform: rotate(200deg) scale(1.3); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+
+    /* ---------- Views ---------- */
+    main { position: relative; z-index: 1; flex: 1; min-height: 0; }
+    .view {
+      position: absolute;
+      inset: 0;
+      overflow-y: auto;
+      padding: 0 26px 24px;
+      animation: viewIn .45s cubic-bezier(.2, 1.4, .4, 1);
+    }
+    @keyframes viewIn {
+      from { opacity: 0; transform: translateY(14px) rotate(-1deg); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* Today */
+    #today { display: flex; flex-direction: column; }
+    #today[hidden] { display: none !important; }
+    .title-wrap { text-align: center; margin: 3.5vh 0 3.5vh; }
+    h1 { font-size: 2.6rem; font-weight: 700; margin: 0; line-height: 1; }
+    .scribble { display: block; width: 190px; height: 14px; margin: 2px auto 6px; }
+    .date { font-size: 1.3rem; color: var(--ink-soft); }
+
+    .streak {
+      display: inline-flex; align-items: center; gap: 4px;
+      margin-top: 6px;
+      font-size: 1.35rem; font-weight: 700;
+    }
+    .streak svg { width: 24px; height: 24px; }
+    .streak.zero { font-weight: 400; color: var(--ink-soft); }
+    .streak.bump { animation: bump .7s cubic-bezier(.3, 1.8, .5, 1); }
+    @keyframes bump {
+      0%   { transform: scale(1); }
+      35%  { transform: scale(1.45) rotate(-6deg); }
+      100% { transform: scale(1) rotate(0); }
+    }
+
+    .field { margin-bottom: 4vh; }
+    .label {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 1.6rem; font-weight: 700;
+      margin: 0 0 6px 6px;
+    }
+    .label svg { width: 26px; height: 26px; }
+    .box {
+      position: relative;
+      min-height: 76px;
+      display: flex; align-items: center; justify-content: center;
+      padding: 10px 16px;
+      font-size: 2.3rem; font-weight: 700; text-align: center; line-height: 1.05;
+      border: 2.5px solid var(--ink);
+      border-radius: var(--sketchy);
+      background: rgba(255, 255, 255, .35);
+    }
+    .box::after {           /* zweiter, leicht verschobener Strich = Skizzen-Look */
+      content: "";
+      position: absolute; inset: -4px 2px 3px -3px;
+      border: 1.5px solid var(--ink);
+      border-radius: 18px 225px 18px 255px / 255px 18px 225px 18px;
+      opacity: .35;
+      transform: rotate(-.8deg);
+      pointer-events: none;
+    }
+    .box .placeholder { color: var(--ink-soft); font-weight: 400; }
+    .box.wiggle { animation: wiggle .5s ease; }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(0); }
+      25% { transform: rotate(-2.5deg) scale(1.03); }
+      55% { transform: rotate(2deg); }
+      80% { transform: rotate(-1deg); }
+    }
+    .box .word.write { animation: write .6s ease-out; }
+    @keyframes write {
+      from { clip-path: inset(0 100% 0 0); }
+      to   { clip-path: inset(0 0 0 0); }
+    }
+    .box .word.rolling { opacity: .45; filter: blur(.4px); }
+
+    .actions {
+      margin-top: auto;
+      display: flex; flex-direction: column; align-items: center;
+      gap: 2px;
+      min-height: 120px;
+    }
+    .go {
+      position: relative;
+      width: 72%;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      font: inherit; font-size: 2.4rem; font-weight: 700;
+      color: var(--paper);
+      background: var(--ink);
+      border: 2.5px solid var(--ink);
+      border-radius: var(--sketchy);
+      padding: 6px 0 10px;
+      box-shadow: 4px 5px 0 rgba(15, 60, 101, .3);
+      cursor: pointer;
+      touch-action: manipulation;
+      transition: transform .12s, box-shadow .12s, background .3s, color .3s;
+      animation: breathe 2.6s ease-in-out infinite;
+    }
+    .go svg { width: 34px; height: 34px; }
+    .go svg .doodle, .go .doodle { stroke: currentColor; stroke-width: 3; }
+    .go:active { transform: translate(3px, 4px) scale(.96) rotate(-1.5deg); box-shadow: 1px 1px 0 rgba(15, 60, 101, .3); animation: none; }
+    .go:disabled { cursor: default; }
+    .go.is-done {
+      color: var(--ink);
+      background: transparent;
+      box-shadow: none;
+      animation: none;
+    }
+    .go.wiggle { animation: wiggle .5s ease; }
+    @keyframes breathe { 0%, 100% { scale: 1; } 50% { scale: 1.035; } }
+
+    .hint { font-size: 1.3rem; color: var(--ink-soft); min-height: 1.6em; }
+
+    .spark {
+      position: fixed;
+      width: 30px; height: 30px;
+      pointer-events: none;
+      z-index: 10;
+      animation: fly .9s cubic-bezier(.2, .8, .4, 1) forwards;
+    }
+    @keyframes fly {
+      0%   { transform: translate(-50%, -50%) scale(.2) rotate(0); opacity: 1; }
+      70%  { opacity: 1; }
+      100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1) rotate(var(--rot)); opacity: 0; }
+    }
+
+    /* History */
+    .hist-head { text-align: center; margin: 3.5vh 0 3vh; }
+    .hist-head h1 { font-size: 2.4rem; }
+    .count { font-size: 1.3rem; color: var(--ink-soft); }
+    .hist-head .streak { margin-top: 4px; }
+
+    #historyList ul { list-style: none; margin: 0; padding: 0; }
+    .entry {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 4px;
+      border-bottom: 1.5px dashed var(--ink-faint);
+      opacity: 0;
+      animation: popIn .4s cubic-bezier(.2, 1.5, .4, 1) forwards;
+      animation-delay: var(--d, 0s);
+    }
+    .entry.gone { animation: popOut .3s ease-in forwards; }
+    @keyframes popIn { from { opacity: 0; transform: translateX(-12px) scale(.95); } to { opacity: 1; transform: none; } }
+    @keyframes popOut { to { opacity: 0; transform: translateX(30px) rotate(3deg); } }
+
+    .check {
+      width: 42px; height: 42px; flex: none;
+      border: 0; padding: 2px; background: none; cursor: pointer;
+      transition: transform .15s;
+      touch-action: manipulation;
+    }
+    .check:active { transform: scale(.85) rotate(-6deg); }
+    .check svg { width: 100%; height: 100%; }
+    .check .tick {
+      stroke-width: 3.2;
+      stroke-dasharray: 1;
+      stroke-dashoffset: 1;
+      transition: stroke-dashoffset .35s ease-out;
+    }
+    .entry.is-done .check .tick { stroke-dashoffset: 0; }
+
+    .info { flex: 1; min-width: 0; }
+    .when { font-size: 1.2rem; color: var(--ink-soft); line-height: 1.1; }
+    .pair { font-size: 1.55rem; line-height: 1.1; transition: opacity .3s; }
+    .pair b { font-weight: 700; }
+    .pair .plus { color: var(--ink-soft); margin: 0 4px; }
+    .entry:not(.is-done) .pair { opacity: .6; }
+
+    .del {
+      width: 36px; height: 36px; flex: none;
+      border: 0; background: none; cursor: pointer;
+      font: inherit; font-size: 1.6rem; color: var(--ink-soft);
+      border-radius: 50%;
+      transition: transform .15s;
+    }
+    .del:active { transform: scale(.8) rotate(90deg); }
+
+    .empty { text-align: center; margin-top: 8vh; font-size: 1.6rem; color: var(--ink-soft); }
+    .empty svg { width: 90px; height: 90px; display: block; margin: 0 auto 10px; opacity: .7; }
+
+    .clear-wrap { text-align: center; margin: 10px 0 20px; font-size: 1.4rem; }
+    .link-btn {
+      font: inherit; color: var(--ink); background: none; border: 0; cursor: pointer;
+      text-decoration: underline wavy rgba(15, 60, 101, .4);
+      text-underline-offset: 5px;
+      padding: 6px 10px;
+    }
+    .reroll { font-size: 1.45rem; }
+    .reroll svg { width: 20px; height: 20px; vertical-align: -3px; margin-right: 2px; }
+
+    /* ---------- Tab-Leiste ---------- */
+    nav {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      justify-content: space-around;
+      padding: 6px 20px calc(10px + env(safe-area-inset-bottom));
+      border-top: 2px solid var(--ink);
+      border-radius: 60% 40% 0 0 / 6px 4px 0 0;
+      background: var(--paper);
+    }
+    .tab {
+      display: flex; flex-direction: column; align-items: center;
+      width: 110px;
+      font: inherit; font-size: 1.35rem; color: var(--ink-soft);
+      background: none; border: 0; cursor: pointer;
+      padding: 4px 0 0;
+      touch-action: manipulation;
+    }
+    .tab svg.icon { width: 32px; height: 32px; }
+    .tab svg.icon .doodle, .tab svg.icon { stroke: var(--ink-soft); }
+    .tab .underline { width: 56px; height: 8px; visibility: hidden; }
+    .tab[aria-selected="true"] { color: var(--ink); font-weight: 700; }
+    .tab[aria-selected="true"] svg.icon { animation: wiggle .5s ease; stroke: var(--ink); }
+    .tab[aria-selected="true"] .underline { visibility: visible; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="bg-doodles" id="bgDoodles"></div>
+
+    <header>
+      <div class="brand">lazy<br>sketchbook</div>
+      <button class="mascot" id="mascot" aria-label="Flower"></button>
+    </header>
+
+    <main>
+      <!-- Tab 1: Today -->
+      <section class="view" id="today">
+        <div class="title-wrap">
+          <h1>Sketch of the day</h1>
+          <svg class="scribble doodle draw" viewBox="0 0 200 14" preserveAspectRatio="none">
+            <path pathLength="1" style="--d:.2s" d="M4 9 C40 3 80 12 120 6 S175 4 196 8"/>
+          </svg>
+          <div class="date" id="todayDate"></div>
+          <div class="streak" id="streakToday"></div>
+        </div>
+
+        <div class="field">
+          <div class="label" id="shapeLabel">Shape</div>
+          <div class="box" id="shape"><span class="word placeholder">?</span></div>
+        </div>
+
+        <div class="field">
+          <div class="label" id="promptLabel">Prompt</div>
+          <div class="box" id="prompt"><span class="word placeholder">?</span></div>
+        </div>
+
+        <div class="actions">
+          <button class="go" id="go">Go!</button>
+          <button class="link-btn reroll" id="reroll" hidden></button>
+          <div class="hint" id="hint"></div>
+        </div>
+      </section>
+
+      <!-- Tab 2: History -->
+      <section class="view" id="history" hidden>
+        <div class="hist-head">
+          <h1>History</h1>
+          <div class="count" id="count"></div>
+          <div class="streak" id="streakHistory"></div>
+        </div>
+        <div id="historyList"></div>
+      </section>
+    </main>
+
+    <nav role="tablist">
+      <button class="tab" role="tab" data-view="today" aria-selected="true" id="tabToday"></button>
+      <button class="tab" role="tab" data-view="history" aria-selected="false" id="tabHistory"></button>
+    </nav>
+  </div>
+
+  <script src="words.js"></script>
+  <script>
+    // ============================================================
+    //  Doodles (handgezeichnete Mini-Bildchen als SVG)
+    // ============================================================
+    const DOODLES = {
+      flower:   '<circle cx="20" cy="8" r="4"/><circle cx="26" cy="12" r="4"/><circle cx="24" cy="19" r="4"/><circle cx="16" cy="19" r="4"/><circle cx="14" cy="12" r="4"/><circle cx="20" cy="14" r="1.8"/><path d="M20 22 C19 28 21 32 20 38"/><path d="M20 31 C23 27 27 27 28 27 C27 31 23 32 20 31"/>',
+      star:     '<path d="M20 5 L24 15 L35 16 L26 23 L29 34 L20 28 L11 34 L14 23 L5 16 L16 15 Z"/>',
+      heart:    '<path d="M20 33 C8 25 4 17 10 11 C15 7 19 10 20 14 C21 10 25 7 30 11 C36 17 32 25 20 33 Z"/>',
+      spiral:   '<path d="M20 20 c0-2 3-2 3 0 c0 4-6 4-6 0 c0-6 9-6 9 0 c0 8-12 8-12 0 c0-10 15-10 15 0 c0 11-18 11-18 0"/>',
+      sun:      '<circle cx="20" cy="20" r="6"/><path d="M20 5 V10 M20 30 V35 M5 20 H10 M30 20 H35 M9 9 L12.5 12.5 M27.5 27.5 L31 31 M31 9 L27.5 12.5 M12.5 27.5 L9 31"/>',
+      grass:    '<path d="M6 34 L11 16 L14 34 L19 10 L22 34 L28 17 L30 34 M4 34 H36"/>',
+      cloud:    '<path d="M10 28 C4 28 4 20 11 20 C11 13 21 12 22 18 C25 13 33 15 32 21 C37 21 37 28 32 28 Z"/>',
+      mushroom: '<path d="M6 21 C6 9 34 9 34 21 Z"/><path d="M16 21 V31 C16 34 24 34 24 31 V21"/><circle class="dot" cx="14" cy="16" r="1.4"/><circle class="dot" cx="21" cy="13" r="1.4"/><circle class="dot" cx="27" cy="17" r="1.4"/>',
+      leaf:     '<path d="M8 32 C8 16 18 8 32 8 C32 22 24 32 8 32 Z"/><path d="M8 32 L24 16"/>',
+      pencil:   '<path d="M8 32 L10 24 L27 7 L33 13 L16 30 Z"/><path d="M23 11 L29 17"/><path d="M8 32 L14 31"/>',
+      book:     '<path d="M5 10 C11 8 16 9 20 12 C24 9 29 8 35 10 V32 C29 30 24 31 20 33 C16 31 11 30 5 32 Z"/><path d="M20 12 V33"/>',
+      squiggle: '<path d="M4 20 C8 12 12 28 16 20 S24 12 28 20 S34 26 36 20"/>',
+      flame:    '<path d="M20 36 C10 36 8 26 13 19 C14 24 17 25 17 25 C15 17 19 10 24 5 C24 13 32 17 31 27 C30 33 26 36 20 36 Z"/><path d="M20 33 C17 33 16 29 19 26 C20 28 22 28 22 28 C24 30 23 33 20 33 Z"/>',
+      tick:     '<path d="M8 21 L16 29 L33 9"/>',
+      dice:     '<path d="M9 7 C17 6 25 7 33 7 C34 15 33 25 33 33 C25 34 15 33 7 33 C6 25 7 15 9 7 Z"/><circle class="dot" cx="14" cy="14" r="2"/><circle class="dot" cx="26" cy="26" r="2"/><circle class="dot" cx="20" cy="20" r="2"/>',
+    };
+    const SPARK_SET = ["star", "heart", "spiral", "flower", "sun", "squiggle", "leaf"];
+
+    function doodle(name, { cls = "", draw = false, delay = 0 } = {}) {
+      let inner = DOODLES[name];
+      if (draw) inner = inner.replace(/<(path|circle)(?![^>]*class="dot")/g, `<$1 pathLength="1" style="--d:${delay}s"`);
+      return `<svg class="doodle ${draw ? "draw" : ""} ${cls}" viewBox="0 0 40 40" aria-hidden="true">${inner}</svg>`;
+    }
+
+    // Hintergrund-Doodles (verstreut, wippen leise)
+    const BG = [
+      { n: "star",     x: "6%",  y: "26%", s: 30, r: -12 },
+      { n: "flower",   x: "84%", y: "21%", s: 38, r: 8 },
+      { n: "spiral",   x: "88%", y: "47%", s: 30, r: 0 },
+      { n: "leaf",     x: "3%",  y: "52%", s: 32, r: -20 },
+      { n: "heart",    x: "86%", y: "68%", s: 26, r: 12 },
+      { n: "mushroom", x: "4%",  y: "76%", s: 34, r: -6 },
+      { n: "grass",    x: "62%", y: "84%", s: 34, r: 0 },
+      { n: "cloud",    x: "40%", y: "13%", s: 34, r: 0 },
+    ];
+    document.getElementById("bgDoodles").innerHTML = BG.map((b, i) =>
+      doodle(b.n, { draw: true, delay: .3 + i * .12 })
+        .replace("<svg ", `<svg style="left:${b.x};top:${b.y};width:${b.s}px;height:${b.s}px;--r:${b.r}deg;--bd:${-i * .7}s" `)
+    ).join("");
+
+    // Kleine Doodles an UI-Elementen
+    document.getElementById("mascot").innerHTML = doodle("flower", { draw: true });
+    document.getElementById("shapeLabel").insertAdjacentHTML("afterbegin", doodle("star"));
+    document.getElementById("promptLabel").insertAdjacentHTML("afterbegin", doodle("flower"));
+    document.getElementById("reroll").innerHTML = doodle("dice") + "reroll";
+    const underline = '<svg class="underline doodle" viewBox="0 0 56 8" preserveAspectRatio="none"><path d="M3 5 C15 2 30 7 53 3"/></svg>';
+    document.getElementById("tabToday").innerHTML = doodle("pencil", { cls: "icon" }) + "<span>today</span>" + underline;
+    document.getElementById("tabHistory").innerHTML = doodle("book", { cls: "icon" }) + "<span>history</span>" + underline;
+
+    const mascot = document.getElementById("mascot");
+    mascot.addEventListener("click", () => restart(mascot, "spin"));
+    mascot.addEventListener("animationend", (e) => { if (e.animationName === "spin") mascot.classList.remove("spin"); });
+
+    function restart(el, cls) {
+      el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+    }
+
+    // ============================================================
+    //  Datum-Helfer (ein Tag = "YYYY-MM-DD" in lokaler Zeit)
+    // ============================================================
+    const fmtLong = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long" });
+    const fmtYear = new Intl.DateTimeFormat("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const pad = (n) => String(n).padStart(2, "0");
+    const dayKey = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const parseDay = (k) => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d); };
+    const todayKey = () => dayKey(new Date());
+    const shiftDay = (k, delta) => { const d = parseDay(k); d.setDate(d.getDate() + delta); return dayKey(d); };
+
+    function dayLabel(k) {
+      if (k === todayKey()) return "Today";
+      if (k === shiftDay(todayKey(), -1)) return "Yesterday";
+      const d = parseDay(k);
+      return (d.getFullYear() === new Date().getFullYear() ? fmtLong : fmtYear).format(d);
+    }
+
+    // ============================================================
+    //  Speicher: ein Eintrag pro Tag  { day, t, shape, prompt, done }
+    //  (liegt nur auf dem Handy)
+    // ============================================================
+    const STORE = "lazysketchbook.history";
+
+    function loadHistory() {
+      let list;
+      try { list = JSON.parse(localStorage.getItem(STORE)) || []; } catch { list = []; }
+      // Alte Version hatte mehrere Einträge pro Tag ohne "day" -> letzten pro Tag behalten
+      if (list.some((e) => !e.day)) {
+        const byDay = {};
+        for (const e of list) {
+          const day = e.day || dayKey(new Date(e.t));
+          if (!byDay[day] || byDay[day].t < e.t) byDay[day] = { day, t: e.t, shape: e.shape, prompt: e.prompt, done: !!e.done };
+        }
+        list = Object.values(byDay);
+        saveHistory(list);
+      }
+      return list;
+    }
+    function saveHistory(list) {
+      try { localStorage.setItem(STORE, JSON.stringify(list)); } catch {}
+    }
+    function getToday() {
+      return loadHistory().find((e) => e.day === todayKey());
+    }
+    function upsertToday(fields) {
+      const list = loadHistory();
+      const k = todayKey();
+      const i = list.findIndex((e) => e.day === k);
+      if (i >= 0) Object.assign(list[i], fields);
+      else list.push({ day: k, done: false, ...fields });
+      saveHistory(list);
+    }
+
+    // Streak: wie viele Tage in Folge abgehakt (heute zählt mit, sonst ab gestern)
+    function streak(list = loadHistory()) {
+      const done = new Set(list.filter((e) => e.done).map((e) => e.day));
+      let k = todayKey();
+      if (!done.has(k)) k = shiftDay(k, -1);
+      let n = 0;
+      while (done.has(k)) { n++; k = shiftDay(k, -1); }
+      return n;
+    }
+
+    function renderStreak(el, bump = false) {
+      const n = streak();
+      const todayDone = !!getToday()?.done;
+      el.classList.toggle("zero", n === 0);
+      if (n === 0) el.innerHTML = "start a streak today";
+      else el.innerHTML = doodle("flame") + `${n} day streak` + (todayDone ? "" : " – keep it going!");
+      if (bump) restart(el, "bump");
+    }
+
+    // ============================================================
+    //  Tab "today"
+    // ============================================================
+    const shapeBox = document.getElementById("shape");
+    const promptBox = document.getElementById("prompt");
+    const goBtn = document.getElementById("go");
+    const rerollBtn = document.getElementById("reroll");
+    const hint = document.getElementById("hint");
+    const streakToday = document.getElementById("streakToday");
+
+    function randomFrom(list, avoid) {
+      if (!list.length) return "–";
+      if (list.length === 1) return list[0];
+      let w;
+      do { w = list[Math.floor(Math.random() * list.length)]; } while (w === avoid);
+      return w;
+    }
+
+    function setWord(box, text, mode) {
+      const span = document.createElement("span");
+      span.className = "word" + (mode ? " " + mode : "");
+      span.textContent = text;
+      box.replaceChildren(span);
+    }
+
+    // Würfeln wie ein kleiner Spielautomat, dann wird das Wort "hingeschrieben"
+    function roll(box, list, finalWord, ticks) {
+      return new Promise((resolve) => {
+        let i = 0;
+        const timer = setInterval(() => {
+          if (i++ < ticks) {
+            setWord(box, randomFrom(list), "rolling");
+          } else {
+            clearInterval(timer);
+            setWord(box, finalWord, "write");
+            restart(box, "wiggle");
+            resolve();
+          }
+        }, 65);
+      });
+    }
+
+    function sparks(fromEl, set = SPARK_SET, count = 8) {
+      const r = fromEl.getBoundingClientRect();
+      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+      for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + Math.random() * .5;
+        const dist = 70 + Math.random() * 60;
+        const wrap = document.createElement("div");
+        wrap.innerHTML = doodle(set[Math.floor(Math.random() * set.length)], { cls: "spark" });
+        const el = wrap.firstChild;
+        el.style.left = cx + "px";
+        el.style.top = cy + "px";
+        el.style.setProperty("--dx", Math.cos(angle) * dist + "px");
+        el.style.setProperty("--dy", Math.sin(angle) * dist - 30 + "px");
+        el.style.setProperty("--rot", (Math.random() * 120 - 60) + "deg");
+        document.body.appendChild(el);
+        el.addEventListener("animationend", () => el.remove());
+      }
+    }
+
+    // Zeigt den Zustand von heute: noch nichts / Idee steht / gezeichnet
+    function renderToday() {
+      document.getElementById("todayDate").textContent = fmtLong.format(new Date());
+      const entry = getToday();
+
+      if (!entry) {
+        shapeBox.innerHTML = promptBox.innerHTML = '<span class="word placeholder">?</span>';
+        goBtn.textContent = "Go!";
+        goBtn.dataset.mode = "go";
+        goBtn.classList.remove("is-done");
+        rerollBtn.hidden = true;
+        hint.textContent = "";
+      } else {
+        if (shapeBox.textContent !== entry.shape) setWord(shapeBox, entry.shape);
+        if (promptBox.textContent !== entry.prompt) setWord(promptBox, entry.prompt);
+        if (entry.done) {
+          goBtn.innerHTML = doodle("tick", { draw: true }) + "sketched!";
+          goBtn.dataset.mode = "done";
+          goBtn.classList.add("is-done");
+          rerollBtn.hidden = true;
+          hint.textContent = "see you tomorrow ♡";
+        } else {
+          goBtn.textContent = "done!";
+          goBtn.dataset.mode = "mark";
+          goBtn.classList.remove("is-done");
+          rerollBtn.hidden = false;
+          hint.textContent = "tap done! once you've sketched it";
+        }
+      }
+      renderStreak(streakToday);
+    }
+
+    async function pickIdea() {
+      goBtn.disabled = rerollBtn.disabled = true;
+      sparks(goBtn);
+      const shape = randomFrom(SHAPES, shapeBox.textContent);
+      const prompt = randomFrom(PROMPTS, promptBox.textContent);
+      await Promise.all([roll(shapeBox, SHAPES, shape, 7), roll(promptBox, PROMPTS, prompt, 11)]);
+      upsertToday({ t: Date.now(), shape, prompt, done: false });
+      goBtn.disabled = rerollBtn.disabled = false;
+      renderToday();
+    }
+
+    goBtn.addEventListener("click", () => {
+      const mode = goBtn.dataset.mode;
+      if (mode === "go") {
+        pickIdea();
+      } else if (mode === "mark") {
+        upsertToday({ done: true });
+        sparks(goBtn, ["heart", "star", "flower", "sun"], 12);
+        renderToday();
+        renderStreak(streakToday, true);
+      } else {
+        // schon gezeichnet: einfach ein bisschen Freude
+        restart(goBtn, "wiggle");
+        sparks(goBtn, ["heart"], 5);
+      }
+    });
+    rerollBtn.addEventListener("click", pickIdea);
+
+    // ============================================================
+    //  Tab "history"
+    // ============================================================
+    const historyList = document.getElementById("historyList");
+    const countEl = document.getElementById("count");
+    const streakHistory = document.getElementById("streakHistory");
+
+    function renderHistoryHead() {
+      const list = loadHistory();
+      const done = list.filter((e) => e.done).length;
+      countEl.textContent = `${list.length} ${list.length === 1 ? "idea" : "ideas"} · ${done} sketched`;
+      renderStreak(streakHistory);
+    }
+
+    function renderHistory() {
+      const list = loadHistory().sort((a, b) => (a.day < b.day ? 1 : -1));
+      renderHistoryHead();
+      historyList.replaceChildren();
+
+      if (!list.length) {
+        historyList.innerHTML = `<div class="empty">${doodle("pencil", { draw: true })}nothing sketched yet …<br>go on, tap Go!</div>`;
+        return;
+      }
+
+      const ul = document.createElement("ul");
+      list.forEach((e, n) => {
+        const li = document.createElement("li");
+        li.className = "entry" + (e.done ? " is-done" : "");
+        li.style.setProperty("--d", Math.min(n, 12) * 0.04 + "s");
+
+        // Checkbox zum Abhaken
+        const check = document.createElement("button");
+        check.className = "check";
+        check.setAttribute("aria-label", "Mark as sketched");
+        check.innerHTML = `<svg class="doodle" viewBox="0 0 40 40"><path d="M7 9 C15 7 25 8 33 7 C34 15 33 25 34 33 C25 34 15 33 7 34 C6 25 7 15 7 9 Z"/><path class="tick" pathLength="1" d="M12 21 L18 28 L31 10"/></svg>`;
+        check.addEventListener("click", () => {
+          const all = loadHistory();
+          const item = all.find((x) => x.day === e.day);
+          item.done = !item.done;
+          saveHistory(all);
+          li.classList.toggle("is-done", item.done);
+          if (item.done) sparks(check, ["heart", "star"], 6);
+          renderHistoryHead();
+          restart(streakHistory, "bump");
+          renderToday();
+        });
+
+        const info = document.createElement("div");
+        info.className = "info";
+        const when = document.createElement("div");
+        when.className = "when";
+        when.textContent = dayLabel(e.day);
+        const pair = document.createElement("div");
+        pair.className = "pair";
+        const b1 = document.createElement("b"); b1.textContent = e.shape;
+        const plus = document.createElement("span"); plus.className = "plus"; plus.textContent = "+";
+        const b2 = document.createElement("span"); b2.textContent = e.prompt;
+        pair.append(b1, plus, b2);
+        info.append(when, pair);
+
+        const del = document.createElement("button");
+        del.className = "del";
+        del.textContent = "×";
+        del.setAttribute("aria-label", "Delete entry");
+        del.addEventListener("click", () => {
+          li.classList.add("gone");
+          li.addEventListener("animationend", () => {
+            saveHistory(loadHistory().filter((x) => x.day !== e.day));
+            renderHistory();
+            renderToday();
+          }, { once: true });
+        });
+
+        li.append(check, info, del);
+        ul.append(li);
+      });
+      historyList.append(ul);
+
+      // "Clear all" mit eingebauter Rückfrage
+      const wrap = document.createElement("div");
+      wrap.className = "clear-wrap";
+      const ask = document.createElement("button");
+      ask.className = "link-btn";
+      ask.textContent = "clear all";
+      ask.addEventListener("click", () => {
+        wrap.innerHTML = 'really delete everything? <button class="link-btn" id="yes">yes</button> <button class="link-btn" id="no">no</button>';
+        wrap.querySelector("#yes").onclick = () => { saveHistory([]); renderHistory(); renderToday(); };
+        wrap.querySelector("#no").onclick = renderHistory;
+      });
+      wrap.append(ask);
+      historyList.append(wrap);
+    }
+
+    // ============================================================
+    //  Tabs
+    // ============================================================
+    const tabs = document.querySelectorAll(".tab");
+    tabs.forEach((tab) => tab.addEventListener("click", () => {
+      const target = tab.dataset.view;
+      tabs.forEach((t) => t.setAttribute("aria-selected", String(t === tab)));
+      document.querySelectorAll(".view").forEach((v) => {
+        const show = v.id === target;
+        if (show && v.hidden) {
+          v.hidden = false;
+          v.style.animation = "none"; void v.offsetWidth; v.style.animation = "";
+        } else if (!show) {
+          v.hidden = true;
+        }
+      });
+      if (target === "history") renderHistory();
+    }));
+
+    // Start + neu prüfen, wenn die App nach Mitternacht wieder geöffnet wird
+    renderToday();
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") renderToday();
+    });
+
+    // Offline-Unterstützung
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js");
+    }
+  </script>
+</body>
+</html>
